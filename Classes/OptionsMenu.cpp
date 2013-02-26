@@ -37,27 +37,34 @@ bool OptionsMenu::init(){
 
 		CCSize winSize = CCDirector::sharedDirector()->getWinSize();
 		
-		CCSprite *bg_menu = CCSprite::spriteWithFile("menu.png", CCRectMake(0,0,winSize.width,winSize.height));
-		bg_menu->setPosition(ccp(winSize.width/2 , winSize.height/2));
+		CCSprite *bg_menu = CCSprite::create("menu.png", CCRectMake(0,0,winSize.width,winSize.height));
+		bg_menu->setPosition(ccp(winSize.width/2,winSize.height/2));
+		bg_menu->setScaleX(winSize.width/bg_menu->getContentSize().width);
+		bg_menu->setScaleY(winSize.height/bg_menu->getContentSize().height);
 		this->addChild(bg_menu);
 
-		CCSprite *dummyTitle1 = CCSprite::spriteWithFile("options.png", CCRectMake(0,0,636,106));
-		dummyTitle1->setPosition(ccp(winSize.width/2 , winSize.height - dummyTitle1->getContentSize().height/2));
-		this->addChild(dummyTitle1);
+		CCSprite *optionsTitle = CCSprite::create("options.png", CCRectMake(0,0,636,106));
+		optionsTitle->setPosition(ccp(winSize.width/2 , winSize.height - optionsTitle->getContentSize().height/2));
+		this->addChild(optionsTitle);
 		
-		CCSprite *dummyTitle3 = CCSprite::spriteWithFile("soundfx.png", CCRectMake(0,0,400,100));
-		dummyTitle3->setPosition(ccp(250, winSize.height/2));
-		this->addChild(dummyTitle3);
+		CCSprite *soundFxTitle = CCSprite::create("soundfx.png", CCRectMake(0,0,400,100));
+		soundFxTitle->setPosition(ccp(250, winSize.height/2));
+		this->addChild(soundFxTitle);
 
-		CCSprite *dummyTitle2 = CCSprite::spriteWithFile("music.png", CCRectMake(0,0,400,100));
-		dummyTitle2->setPosition(ccp(dummyTitle3->getPosition().x, dummyTitle3->getPosition().y + 10 + dummyTitle2->getContentSize().height));
-		this->addChild(dummyTitle2);
+		CCSprite *musicTitle = CCSprite::create("music.png", CCRectMake(0,0,400,100));
+		musicTitle->setPosition(ccp(soundFxTitle->getPosition().x, soundFxTitle->getPosition().y + 18 + musicTitle->getContentSize().height));
+		this->addChild(musicTitle);
 
-		/*CCSprite *dummyTitle4 = CCSprite::spriteWithFile("PlaceHolderLabel.png", CCRectMake(0,0,200,50));
-		dummyTitle4->setPosition(ccp(dummyTitle3->getPosition().x, dummyTitle3->getPosition().y - 10 - dummyTitle2->getContentSize().height));
-		this->addChild(dummyTitle4);*/
+		//CCSprite *particlesTitle = CCSprite::create("soundfx.png", CCRectMake(0,0,400,100));
+		CCLabelTTF *particlesTitle = CCLabelTTF::create("Particles     ","Arial",60);
+		particlesTitle->setPosition(ccp(musicTitle->getPosition().x + 45, musicTitle->getPosition().y + 50 + particlesTitle->getContentSize().height));
+		this->addChild(particlesTitle);
 
-		// dummyTitle2->getContentSize().y
+		/*CCSprite *particlesTitle = CCSprite::spriteWithFile("PlaceHolderLabel.png", CCRectMake(0,0,200,50));
+		particlesTitle->setPosition(ccp(soundFxTitle->getPosition().x, soundFxTitle->getPosition().y - 10 - musicTitle->getContentSize().height));
+		this->addChild(particlesTitle);*/
+
+		// musicTitle->getContentSize().y
 		CCMenuItemImage *backToMain = CCMenuItemImage::create(
 			"menubutton.png",
             "menubutton.png",
@@ -72,8 +79,13 @@ bool OptionsMenu::init(){
 			this,
 			menu_selector(OptionsMenu::menu_ToggleMusic));
 		CC_BREAK_IF(!toggleMusicOn);
-		toggleMusicOn->setPosition(ccp(dummyTitle2->getPosition().x + dummyTitle2->getContentSize().width/2
-				+ toggleMusicOn->getContentSize().width/2, dummyTitle2->getPosition().y));
+		toggleMusicOn->setPosition(ccp(musicTitle->getPosition().x + musicTitle->getContentSize().width/2
+				+ toggleMusicOn->getContentSize().width/2, musicTitle->getPosition().y));
+		if(GameOptions::sharedGameOptions()->getToggleMusic() == true){
+			toggleMusicOn->setVisible(true);
+		}else{
+			toggleMusicOn->setVisible(false);
+		}
 
 		toggleMusicOff = CCMenuItemImage::create(
 					"OFF_button.png",
@@ -81,9 +93,13 @@ bool OptionsMenu::init(){
 					this,
 					menu_selector(OptionsMenu::menu_ToggleMusic));
 		CC_BREAK_IF(!toggleMusicOff);
-		toggleMusicOff->setPosition(ccp(dummyTitle2->getPosition().x + dummyTitle2->getContentSize().width/2
-				+ toggleMusicOff->getContentSize().width/2, dummyTitle2->getPosition().y));
-		toggleMusicOff->setVisible(false);
+		toggleMusicOff->setPosition(ccp(musicTitle->getPosition().x + musicTitle->getContentSize().width/2
+				+ toggleMusicOff->getContentSize().width/2, musicTitle->getPosition().y));
+		if(GameOptions::sharedGameOptions()->getToggleMusic() == true){
+			toggleMusicOff->setVisible(false);
+		} else {
+			toggleMusicOff->setVisible(true);
+		}
 
 		toggleSoundFXOn = CCMenuItemImage::create(
 			"ON_button.png",
@@ -91,8 +107,13 @@ bool OptionsMenu::init(){
 			this,
 			menu_selector(OptionsMenu::menu_ToggleSoundFX));
 		CC_BREAK_IF(!toggleSoundFXOn);
-		toggleSoundFXOn->setPosition(ccp(dummyTitle3->getPosition().x + dummyTitle3->getContentSize().width/2
-				+ toggleSoundFXOn->getContentSize().width/2, dummyTitle3->getPosition().y));
+		toggleSoundFXOn->setPosition(ccp(soundFxTitle->getPosition().x + soundFxTitle->getContentSize().width/2
+				+ toggleSoundFXOn->getContentSize().width/2, soundFxTitle->getPosition().y));
+		if(GameOptions::sharedGameOptions()->getToggleSFX() == true){
+			toggleSoundFXOn->setVisible(true);
+		} else {
+			toggleSoundFXOn->setVisible(false);
+		}
 
 		toggleSoundFXOff = CCMenuItemImage::create(
 					"OFF_button.png",
@@ -100,9 +121,41 @@ bool OptionsMenu::init(){
 					this,
 					menu_selector(OptionsMenu::menu_ToggleSoundFX));
 		CC_BREAK_IF(!toggleSoundFXOff);
-		toggleSoundFXOff->setPosition(ccp(dummyTitle3->getPosition().x + dummyTitle3->getContentSize().width/2
-				+ toggleSoundFXOff->getContentSize().width/2, dummyTitle3->getPosition().y));
-		toggleSoundFXOff->setVisible(false);
+		toggleSoundFXOff->setPosition(ccp(soundFxTitle->getPosition().x + soundFxTitle->getContentSize().width/2
+				+ toggleSoundFXOff->getContentSize().width/2, soundFxTitle->getPosition().y));
+		if(GameOptions::sharedGameOptions()->getToggleSFX() == true){
+			toggleSoundFXOff->setVisible(false);
+		} else {
+			toggleSoundFXOff->setVisible(true);
+		}
+
+		toggleParticlesOn = CCMenuItemImage::create(
+					"ON_button.png",
+		            "OFF_button.png",
+					this,
+					menu_selector(OptionsMenu::menu_ToggleParticles));
+				CC_BREAK_IF(!toggleParticlesOn);
+				toggleParticlesOn->setPosition(ccp(particlesTitle->getPosition().x + particlesTitle->getContentSize().width/2
+						+ toggleParticlesOn->getContentSize().width/2, particlesTitle->getPosition().y));
+				if(GameOptions::sharedGameOptions()->getToggleParts() == true){
+					toggleParticlesOn->setVisible(true);
+				} else {
+					toggleParticlesOn->setVisible(false);
+				}
+
+		toggleParticlesOff = CCMenuItemImage::create(
+					"OFF_button.png",
+		            "ON_button.png",
+					this,
+					menu_selector(OptionsMenu::menu_ToggleParticles));
+		CC_BREAK_IF(!toggleParticlesOff);
+		toggleParticlesOff->setPosition(ccp(particlesTitle->getPosition().x + particlesTitle->getContentSize().width/2
+				+ toggleParticlesOff->getContentSize().width/2, particlesTitle->getPosition().y));
+		if(GameOptions::sharedGameOptions()->getToggleParts() == true){
+			toggleParticlesOff->setVisible(false);
+		} else {
+			toggleParticlesOff->setVisible(true);
+		}
 
 		/*CCMenuItemImage *toggleAccellerometerOn = CCMenuItemImage::create(
 			"OnUp.png",
@@ -110,10 +163,10 @@ bool OptionsMenu::init(){
 			this,
 			menu_selector(OptionsMenu::menu_ToggleAccel));
 		CC_BREAK_IF(!toggleMusicOn);
-		toggleAccellerometerOn->setPosition(ccp(dummyTitle4->getPosition().x + dummyTitle4->getContentSize().width/2 + toggleAccellerometerOn->getContentSize().width/2, dummyTitle4->getPosition().y));*/
+		toggleAccellerometerOn->setPosition(ccp(particlesTitle->getPosition().x + particlesTitle->getContentSize().width/2 + toggleAccellerometerOn->getContentSize().width/2, particlesTitle->getPosition().y));*/
 
 
-		CCMenu *backMenu = CCMenu::create(backToMain, toggleMusicOn, toggleMusicOff, toggleSoundFXOn, toggleSoundFXOff, NULL); //toggleAccellerometerOn, NULL);
+		CCMenu *backMenu = CCMenu::create(backToMain, toggleMusicOn, toggleMusicOff, toggleSoundFXOn, toggleSoundFXOff, toggleParticlesOn, toggleParticlesOff, NULL); //toggleAccellerometerOn, NULL);
 		CC_BREAK_IF(!backMenu);
 
 		backMenu->setPosition(ccp(0,0));
@@ -129,39 +182,67 @@ bool OptionsMenu::init(){
 
 void OptionsMenu::menu_Back(CCObject* pSender)
 {
+	if(GameOptions::sharedGameOptions()->getToggleSFX() == true){
+		CocosDenshion::SimpleAudioEngine::sharedEngine()->playEffect(std::string(CCFileUtils::sharedFileUtils()->fullPathFromRelativePath("menu_01.ogg")).c_str(),false);
+	}
 	CCDirector::sharedDirector()->replaceScene(HelloWorld::scene());
 }
 
 void OptionsMenu::menu_ToggleMusic(CCObject* pSender){
+	if(GameOptions::sharedGameOptions()->getToggleSFX() == true){
+		CocosDenshion::SimpleAudioEngine::sharedEngine()->playEffect(std::string(CCFileUtils::sharedFileUtils()->fullPathFromRelativePath("menu_01.ogg")).c_str(),false);
+	}
 	if(this->getToggleMusic() == 0){
 		this->setToggleMusic(1);
 		GameOptions::sharedGameOptions()->setToggleMusic(true);
-		std::cout << "Enable Music" << std::endl;
+		//std::cout << "Enable Music" << std::endl;
 		toggleMusicOn->setVisible(true);
 		toggleMusicOff->setVisible(false);
 	}else{
 		this->setToggleMusic(0);
 		GameOptions::sharedGameOptions()->setToggleMusic(false);
-		std::cout << "Disable Music" << std::endl;
+		//std::cout << "Disable Music" << std::endl;
 		toggleMusicOn->setVisible(false);
 		toggleMusicOff->setVisible(true);
 	}
 }
 void OptionsMenu::menu_ToggleSoundFX(CCObject* pSender){
+	if(GameOptions::sharedGameOptions()->getToggleSFX() == true){
+		CocosDenshion::SimpleAudioEngine::sharedEngine()->playEffect(std::string(CCFileUtils::sharedFileUtils()->fullPathFromRelativePath("menu_01.ogg")).c_str(),false);
+	}
 	if(this->getToggleSoundFX() == 0){
 		this->setToggleSoundFX(1);
 		GameOptions::sharedGameOptions()->setToggleSFX(true);
-		std::cout << "Enable SFX" << std::endl;
+		//std::cout << "Enable SFX" << std::endl;
 		toggleSoundFXOn->setVisible(true);
 		toggleSoundFXOff->setVisible(false);
 	}else{
 		this->setToggleSoundFX(0);
 		GameOptions::sharedGameOptions()->setToggleSFX(false);
-		std::cout << "Disable SFX" << std::endl;
+		//std::cout << "Disable SFX" << std::endl;
 		toggleSoundFXOn->setVisible(false);
 		toggleSoundFXOff->setVisible(true);
 	}
 }
+void OptionsMenu::menu_ToggleParticles(CCObject* pSender){
+	if(GameOptions::sharedGameOptions()->getToggleSFX() == true){
+		CocosDenshion::SimpleAudioEngine::sharedEngine()->playEffect(std::string(CCFileUtils::sharedFileUtils()->fullPathFromRelativePath("menu_01.ogg")).c_str(),false);
+	}
+	if(this->getToggleParticles() == 0){
+		this->setToggleParticles(1);
+		GameOptions::sharedGameOptions()->setToggleParts(true);
+		//std::cout << "Enable SFX" << std::endl;
+		toggleParticlesOn->setVisible(true);
+		toggleParticlesOff->setVisible(false);
+	}else{
+		this->setToggleParticles(0);
+		GameOptions::sharedGameOptions()->setToggleParts(false);
+		//std::cout << "Disable SFX" << std::endl;
+		toggleParticlesOn->setVisible(false);
+		toggleParticlesOff->setVisible(true);
+	}
+}
+
 //void OptionsMenu::menu_ToggleAccel(CCObject* pSender){
 //	if(!this->getToggleAccl()){
 //		this->setToggleAccl(1);

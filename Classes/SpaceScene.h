@@ -29,6 +29,8 @@ public:
 
 	void ccTouchesEnded(cocos2d::CCSet* touches, cocos2d::CCEvent* event);
 
+	void ccTouchesBegan(cocos2d::CCSet* touches, cocos2d::CCEvent* event);
+
 	void shipShoot();
 
 	void spriteMoveFinished(CCNode* sender);
@@ -44,6 +46,12 @@ public:
 	void gameLogic(float dt);
 
 	void enemyShoot(float dt);
+
+	void setShoot(float dt);
+
+	void setAttack1(CCObject* pSender);
+	void setAttack2(CCObject* pSender);
+	void setAttack3(CCObject* pSender);
 
 	void enemyMoveFinished(CCNode* sender);
 
@@ -67,6 +75,7 @@ public:
 	cocos2d::CCSprite *dummyTitle2;
 	cocos2d::CCSprite *dummyTitle3;
 	cocos2d::CCSprite *dummyTitle4;
+	cocos2d::CCMenu* attackMenu;
 
 	cocos2d::CCParticleSystem *m_emitter;
 	void explosion(cocos2d::CCPoint location);
@@ -82,10 +91,13 @@ public:
 
 	Player *shipSprite;
 	cocos2d::CCSize winSize;
+	cocos2d::CCMenuItemImage *toggleShootingButton;
 	float _shipPointsPerSecY;
 	bool toggleShootingB;
 	Enemy *enemy;
-	Projectile *projectile;
+	Projectile *projectile1;
+	Projectile *projectile2;
+	Projectile *projectile3;
 	Projectile *enemyProjectile;
 	Level *level;
 	int time;
@@ -94,9 +106,15 @@ public:
 	int enemyNum;
 	bool toggleMusic;
 	bool toggleSFX;
+	bool toggleParticles;
 	bool gameOver;
 	bool upgradeTime;
+	bool canShoot;
+	bool attack1B;
+	bool attack2B;
+	bool attack3B;
 	int levelNum;
+	float tempAttackDmg;
 
 	cocos2d::CCLabelTTF *_timeLabel;
 	cocos2d::CCLabelTTF *_timeLabelDesc;
@@ -108,6 +126,7 @@ public:
 	cocos2d::CCLabelTTF *upgrade2Label;
 	cocos2d::CCLabelTTF *upgrade3Label;
 	cocos2d::CCLabelTTF *upgrade4Label;
+	cocos2d::CCLabelTTF *upgradeLabel;
 	//cocos2d::CCLabelTTF *_objectivesLabel;
 
     // implement the "static node()" method manually

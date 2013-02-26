@@ -11,10 +11,13 @@ public:
 	static GameOptions* sharedGameOptions();
 	bool toggleMusic;
 	bool toggleSFX;
+	bool toggleParts;
 	void setToggleMusic(bool toggle);
 	bool getToggleMusic();
 	void setToggleSFX(bool toggle);
 	bool getToggleSFX();
+	void setToggleParts(bool toggle);
+	bool getToggleParts();
 };
 
 

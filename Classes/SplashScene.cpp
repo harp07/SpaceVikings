@@ -34,7 +34,7 @@ bool SplashScene::init(){
 
 		CCSize winSize = CCDirector::sharedDirector()->getWinSize();
 		
-		CCSprite *splashSprite = CCSprite::spriteWithFile("startup.png");
+		CCSprite *splashSprite = CCSprite::create("startup.png");
 		splashSprite->setPosition(ccp(winSize.width/2 , winSize.height/2));
 		splashSprite->setScaleX(winSize.width/splashSprite->getContentSize().width);
 		splashSprite->setScaleY(winSize.height/splashSprite->getContentSize().height);
@@ -54,5 +54,7 @@ bool SplashScene::init(){
 
 void SplashScene::ccTouchesEnded(cocos2d::CCSet* touches, cocos2d::CCEvent* event){
 	CCTouch* touch = (CCTouch*)(touches->anyObject());
+	GameOptions::sharedGameOptions()->setToggleSFX(true);
+	GameOptions::sharedGameOptions()->setToggleMusic(true);
 	CCDirector::sharedDirector()->replaceScene(HelloWorld::scene());
 }

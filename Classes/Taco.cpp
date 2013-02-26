@@ -60,5 +60,8 @@ bool Taco::init(){
 
 void Taco::menu_Back(CCObject* pSender)
 {
+	if(GameOptions::sharedGameOptions()->getToggleSFX() == true){
+		CocosDenshion::SimpleAudioEngine::sharedEngine()->playEffect(std::string(CCFileUtils::sharedFileUtils()->fullPathFromRelativePath("menu_01.ogg")).c_str(),false);
+	}
 	CCDirector::sharedDirector()->replaceScene(HelloWorld::scene());
 }

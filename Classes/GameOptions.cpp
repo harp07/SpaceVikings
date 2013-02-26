@@ -28,3 +28,9 @@ void GameOptions::setToggleSFX(bool toggle){
 bool GameOptions::getToggleSFX(){
 	return toggleSFX;
 }
+void GameOptions::setToggleParts(bool toggle){
+	toggleParts = toggle;
+}
+bool GameOptions::getToggleParts(){
+	return toggleParts;
+}

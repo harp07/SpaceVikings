@@ -47,12 +47,13 @@ bool SpaceScene::init()
 		level->setScaleY(winSize.height/level->getContentSize().height);
 		
 		this->addChild(level);
-		CCMenuItemImage *toggleShootingButton = CCMenuItemImage::create(
-            "CloseNormal.png",
-            "CloseSelected.png",
+		toggleShootingButton = CCMenuItemImage::create(
+            "toggleShoot.png",
+            "toggleShootSelected.png",
             this,
             menu_selector(SpaceScene::toggleShootingCallback));
         CC_BREAK_IF(! toggleShootingButton);
+        //toggleShootingButton->setScale(2.0f);
 		toggleShootingButton->setPosition(ccp(winSize.width - toggleShootingButton->getContentSize().width/2, winSize.height - toggleShootingButton->getContentSize().height/2));
 
         CCMenu* pMenu = CCMenu::create(toggleShootingButton, NULL);
@@ -69,6 +70,10 @@ bool SpaceScene::init()
 		if(toggleSFX == NULL){
 			//toggleSFX = true;
 		}
+		toggleParticles = GameOptions::sharedGameOptions()->getToggleParts();
+		if(toggleParticles == NULL){
+			//toggleSFX = true;
+		}
 
 		shipSprite = new Player();
 		shipSprite->init(1);
@@ -80,16 +85,14 @@ bool SpaceScene::init()
 			CocosDenshion::SimpleAudioEngine::sharedEngine()->playBackgroundMusic(std::string(CCFileUtils::sharedFileUtils()->fullPathFromRelativePath("Dark_Future_0.ogg")).c_str(), true);
 		}
         
-
-		toggleShootingB = false;
 		_projectiles = new CCArray;
 		_enemies = new CCArray;
 		_enemyProjectiles = new CCArray;
 		time = level->getLevelTime();
-		score = 0;
-		enemyNum = 0;
-		gameOver = false;
-		upgradeTime = false;
+		score = enemyNum = 0;
+		tempAttackDmg = 1;
+		attack1B = canShoot = true;
+		gameOver = upgradeTime = toggleShootingB = attack2B = attack3B = false;
 		setAccelerometerEnabled(true);
 		this->setTouchEnabled(true);
 		if(!gameOver || upgradeTime){
@@ -113,10 +116,12 @@ void SpaceScene::gameLogic(float dt){
 		UpgradeMenu();
 		upgradeTime = true;
 		this->setTouchEnabled(false);
+		unscheduleAllSelectors();
 		
 		//level->setBCompleted1(true);
 	} else if (shipSprite->getCurLives() <= 0){
 		GameOverMenu();
+		unscheduleAllSelectors();
 		//level->setBCompleted1(false);
 	} else {
 		if(enemyNum <= 10){
@@ -128,12 +133,15 @@ void SpaceScene::gameLogic(float dt){
 }
 
 void SpaceScene::toggleShoot(float dt){
-	if(toggleShootingB){
+	this->unschedule(schedule_selector(SpaceScene::shipShoot));
+	if(toggleShootingB && canShoot){
 		shipShoot();
+		canShoot = false;
+		this->schedule(schedule_selector(SpaceScene::setShoot), 0.5+tempAttackDmg);
 	}
 }
 
-void SpaceScene::ccTouchesEnded(cocos2d::CCSet* touches, cocos2d::CCEvent* event){
+void SpaceScene::ccTouchesBegan(cocos2d::CCSet* touches, cocos2d::CCEvent* event){
 	/*CCDirector* pDir = CCDirector::sharedDirector();
 	CCSize shipSize = shipSprite->getContentSize();
 	CCPoint ptNow = shipSprite->getPosition();
@@ -148,11 +156,26 @@ void SpaceScene::ccTouchesEnded(cocos2d::CCSet* touches, cocos2d::CCEvent* event
 
 	CCFiniteTimeAction* shipMove = CCMoveTo::actionWithDuration((float)1.0,ccp(location.x,shipSprite->getContentSize().height/2+150));
 	shipSprite->runAction(CCSequence::actions(shipMove, NULL));*/
-	
-	if(!toggleShootingB){
+	if (canShoot){
 		shipShoot();
+		canShoot = false;
+		this->schedule(schedule_selector(SpaceScene::setShoot), 0.5+tempAttackDmg);
+	}
+	if(!toggleShootingB){
+		this->schedule(schedule_selector(SpaceScene::shipShoot),0.5+tempAttackDmg);
 	}
 	//shipSprite->setPosition(location);
+}
+
+void SpaceScene::setShoot(float dt){
+	canShoot = true;
+}
+
+void SpaceScene::ccTouchesEnded(cocos2d::CCSet* touches, cocos2d::CCEvent* event){
+	if(!toggleShootingB){
+		this->unschedule(schedule_selector(SpaceScene::shipShoot));
+		//shipShoot();
+	}
 }
 
 void SpaceScene::didAccelerate(CCAcceleration* pAccelerationValue){
@@ -178,33 +201,137 @@ void SpaceScene::didAccelerate(CCAcceleration* pAccelerationValue){
 }
 
 void SpaceScene::shipShoot(){
-	projectile = new Projectile();
-	projectile->init(shipSprite->getCurWeapon());
-	projectile->setPosition(ccp(shipSprite->getPosition().x,shipSprite->getContentSize().height + shipSprite->getContentSize().height));
+	if(attack1B){
+		tempAttackDmg = 0.0f;
+		projectile1 = new Projectile();
+		projectile1->init(shipSprite->getCurWeapon());
+		projectile1->setPosition(ccp(shipSprite->getPosition().x,shipSprite->getContentSize().height + shipSprite->getContentSize().height));
+		projectile1->setTag(1);
+		_projectiles->addObject(projectile1);
+		this->addChild(projectile1);
 
-	projectile->setTag(1);
-	_projectiles->addObject(projectile);
-	this->addChild(projectile);
+		int realY = winSize.height + (projectile1->getContentSize().height/2);
+		int realX = projectile1->getPosition().x;
+		CCPoint realDest1 = ccp(projectile1->getPosition().x, realY);
 
-	int realY = winSize.height + (projectile->getContentSize().height/2);
-	int realX = projectile->getPosition().x;
-	CCPoint realDest = ccp(realX, realY);
+		int offRealX = realX - projectile1->getPosition().x;
+		int offRealY = realY - projectile1->getPosition().y;
+		float length = sqrtf((offRealX * offRealX) + (offRealY * offRealY));
+		float velocity = 480/1;
+		float realMoveDuration = length/velocity*shipSprite->getAttackSpeed();
+		CCFiniteTimeAction* projectile1Path = CCMoveTo::actionWithDuration(realMoveDuration,realDest1);
+		CCFiniteTimeAction* projectile1Finish = CCCallFuncN::actionWithTarget(this, callfuncN_selector(SpaceScene::spriteMoveFinished));
 
-	int offRealX = realX - projectile->getPosition().x;
-	int offRealY = realY - projectile->getPosition().y;
-	float length = sqrtf((offRealX * offRealX) + (offRealY * offRealY));
-	float velocity = 480/1;
-	float realMoveDuration = length/velocity*shipSprite->getAttackSpeed();
+		projectile1->runAction(CCSequence::actions(projectile1Path,projectile1Finish, NULL));
+	}
+	if (attack2B){
+		tempAttackDmg = 0.5f;
+		projectile1 = new Projectile();
+		projectile1->init(shipSprite->getCurWeapon());
+		projectile1->setPosition(ccp(shipSprite->getPosition().x,shipSprite->getContentSize().height + shipSprite->getContentSize().height));
+		projectile1->setTag(1);
+		_projectiles->addObject(projectile1);
+		this->addChild(projectile1);
 
-	CCFiniteTimeAction* boomBoom = CCMoveTo::actionWithDuration(realMoveDuration,realDest);
-	CCFiniteTimeAction* boomBoomFin = CCCallFuncN::actionWithTarget(this, callfuncN_selector(SpaceScene::spriteMoveFinished));
-	projectile->runAction(CCSequence::actions(boomBoom,boomBoomFin, NULL));
+			int realY = winSize.height + (projectile1->getContentSize().height/2);
+			int realX = projectile1->getPosition().x;
+			CCPoint realDest1 = ccp(projectile1->getPosition().x, realY);
+
+			int offRealX = realX - projectile1->getPosition().x;
+			int offRealY = realY - projectile1->getPosition().y;
+			float length = sqrtf((offRealX * offRealX) + (offRealY * offRealY));
+			float velocity = 480/1;
+			float realMoveDuration = length/velocity*shipSprite->getAttackSpeed();
+
+		CCFiniteTimeAction* projectile1Path = CCMoveTo::actionWithDuration(realMoveDuration,realDest1);
+		CCFiniteTimeAction* projectile1Finish = CCCallFuncN::actionWithTarget(this, callfuncN_selector(SpaceScene::spriteMoveFinished));
+		projectile1->runAction(CCSequence::actions(projectile1Path,projectile1Finish, NULL));
+
+		projectile2 = new Projectile();
+		projectile2->init(shipSprite->getCurWeapon());
+		projectile2->setPosition(ccp(shipSprite->getPosition().x + projectile2->getContentSize().width,shipSprite->getContentSize().height + shipSprite->getContentSize().height));
+		projectile2->setTag(1);
+		_projectiles->addObject(projectile2);
+		this->addChild(projectile2);
+		CCPoint realDest2 = ccp(projectile2->getPosition().x, realY);
+		CCFiniteTimeAction* projectile2Path = CCMoveTo::actionWithDuration(realMoveDuration,realDest2);
+		CCFiniteTimeAction* projectile2Finish = CCCallFuncN::actionWithTarget(this, callfuncN_selector(SpaceScene::spriteMoveFinished));
+		projectile2->runAction(CCSequence::actions(projectile2Path,projectile2Finish, NULL));
+		//shipSprite->setAttackSpeed(shipSprite->getAttackSpeed()*1.66);
+	}
+	if (attack3B){
+		tempAttackDmg = 1.0f;
+		projectile1 = new Projectile();
+		projectile1->init(shipSprite->getCurWeapon());
+		projectile1->setPosition(ccp(shipSprite->getPosition().x,shipSprite->getContentSize().height + shipSprite->getContentSize().height));
+		projectile1->setTag(1);
+		_projectiles->addObject(projectile1);
+		this->addChild(projectile1);
+
+			int realY = winSize.height + (projectile1->getContentSize().height/2);
+			int realX = projectile1->getPosition().x;
+			CCPoint realDest1 = ccp(projectile1->getPosition().x, realY);
+
+			int offRealX = realX - projectile1->getPosition().x;
+			int offRealY = realY - projectile1->getPosition().y;
+			float length = sqrtf((offRealX * offRealX) + (offRealY * offRealY));
+			float velocity = 480/1;
+			float realMoveDuration = length/velocity*shipSprite->getAttackSpeed();
+
+		CCFiniteTimeAction* projectile1Path = CCMoveTo::actionWithDuration(realMoveDuration,realDest1);
+		CCFiniteTimeAction* projectile1Finish = CCCallFuncN::actionWithTarget(this, callfuncN_selector(SpaceScene::spriteMoveFinished));
+		projectile1->runAction(CCSequence::actions(projectile1Path,projectile1Finish, NULL));
+
+		projectile2 = new Projectile();
+		projectile2->init(shipSprite->getCurWeapon());
+		projectile2->setPosition(ccp(shipSprite->getPosition().x + projectile2->getContentSize().width,shipSprite->getContentSize().height + shipSprite->getContentSize().height/2));
+		projectile2->setTag(1);
+		_projectiles->addObject(projectile2);
+		this->addChild(projectile2);
+		CCPoint realDest2 = ccp(projectile2->getPosition().x, realY);
+		CCFiniteTimeAction* projectile2Path = CCMoveTo::actionWithDuration(realMoveDuration,realDest2);
+		CCFiniteTimeAction* projectile2Finish = CCCallFuncN::actionWithTarget(this, callfuncN_selector(SpaceScene::spriteMoveFinished));
+		projectile2->runAction(CCSequence::actions(projectile2Path,projectile2Finish, NULL));
+
+		projectile3 = new Projectile();
+		projectile3->init(shipSprite->getCurWeapon());
+		projectile3->setPosition(ccp(shipSprite->getPosition().x - projectile3->getContentSize().width,shipSprite->getContentSize().height + shipSprite->getContentSize().height/2));
+		projectile3->setTag(1);
+		_projectiles->addObject(projectile3);
+		this->addChild(projectile3);
+		CCPoint realDest3 = ccp(projectile3->getPosition().x, realY);
+		CCFiniteTimeAction* projectile3Path = CCMoveTo::actionWithDuration(realMoveDuration,realDest3);
+		CCFiniteTimeAction* projectile3Finish = CCCallFuncN::actionWithTarget(this, callfuncN_selector(SpaceScene::spriteMoveFinished));
+		projectile3->runAction(CCSequence::actions(projectile3Path,projectile3Finish, NULL));
+		//shipSprite->setAttackSpeed(shipSprite->getAttackSpeed()*1.33);
+	}
 
 	//projectile->runAction(CCSequence::actions(CCMoveTo::actionWithDuration(realMoveDuration, realDest),
 			//CCCallFuncN::actionWithTarget(this, callfuncN_selector(SpaceScene::spriteMoveFinished)), NULL));
-	//if(toggleSFX){
-		//CocosDenshion::SimpleAudioEngine::sharedEngine()->playEffect("player_attack_4.ogg");
-	//}
+	if(toggleSFX){
+		CocosDenshion::SimpleAudioEngine::sharedEngine()->playEffect(std::string(CCFileUtils::sharedFileUtils()->fullPathFromRelativePath("player_fire_4.ogg")).c_str(),false);
+	}
+}
+
+void SpaceScene::setAttack1(CCObject* pSender){
+	attack1B = true;
+	attack2B = false;
+	attack3B = false;
+	//shipSprite->setCurDamage(tempAttackDmg);
+}
+
+void SpaceScene::setAttack2(CCObject* pSender){
+	attack1B = false;
+	attack2B = true;
+	attack3B = false;
+	//shipSprite->setCurDamage(tempAttackDmg/20);
+}
+
+void SpaceScene::setAttack3(CCObject* pSender){
+	attack1B = false;
+	attack2B = false;
+	attack3B = true;
+	//shipSprite->setCurDamage(tempAttackDmg/30);
 }
 
 void SpaceScene::enemyShoot(float dt){	
@@ -234,7 +361,7 @@ void SpaceScene::enemyShoot(float dt){
 		//enemyProjectile->runAction(CCSequence::actions(CCMoveTo::actionWithDuration((float)3.0f, ccp(shipSprite->getPosition().x*(rand() % (int)winSize.width/200),shipSprite->getPosition().y-100)),
 		//CCCallFuncN::actionWithTarget(this, callfuncN_selector(SpaceScene::spriteMoveFinished)), NULL));
 
-		CCFiniteTimeAction* boomBoom = CCMoveTo::actionWithDuration((float)4.0,ccp(shipSprite->getPosition().x*(rand() % (int)winSize.width/200),shipSprite->getPosition().y-100));
+		CCFiniteTimeAction* boomBoom = CCMoveTo::actionWithDuration((float)4.0-(shipSprite->getAttackSpeed()-1.0f),ccp(shipSprite->getPosition().x*(rand() % (int)winSize.width/200),shipSprite->getPosition().y-100));
 		CCFiniteTimeAction* boomBoomFin = CCCallFuncN::actionWithTarget(this, callfuncN_selector(SpaceScene::spriteMoveFinished));
 		enemyProjectile->runAction(CCSequence::actions(boomBoom,boomBoomFin, NULL));
 		if(toggleSFX){
@@ -350,10 +477,14 @@ void SpaceScene::update(float dt){
 							sprintf(scoreChar,"%d",score);
 							_scoreLabel->setString(scoreChar);
 							enemyNum -= 1;
-							explosion(target->getPosition());
+							if(toggleParticles){
+								explosion(target->getPosition());
+							}
 						} else {
 							target->setCurHp(health);
-							smoke(target->getPosition());
+							if(toggleParticles){
+								smoke(target->getPosition());
+							}
 						}
 					} 
 					if (enemyProjectileRect.intersectsRect(playerRect)){
@@ -364,7 +495,9 @@ void SpaceScene::update(float dt){
 						char livesChar[100];
 						sprintf(livesChar,"%d",playerLives);
 						_livesLabel->setString(livesChar);
-						smoke(shipSprite->getPosition());
+						if(toggleParticles){
+							smoke(enemyProje->getPosition());
+						}
 					}
 					}
 					CCARRAY_FOREACH(enemyProjectilesToDelete,arrayItemE){
@@ -414,7 +547,7 @@ void SpaceScene::spriteMoveFinished(CCNode* sender){
 void SpaceScene::toggleShootingCallback(CCObject* pSender)
 {
     if(!toggleShootingB){
-		this->schedule(schedule_selector(SpaceScene::toggleShoot),0.2);
+		this->schedule(schedule_selector(SpaceScene::toggleShoot),0.5);
 		toggleShootingB = true;
 	} else if (toggleShootingB){
 		toggleShootingB = false;
@@ -430,9 +563,23 @@ void SpaceScene::explosion(CCPoint location){
 	m_emitter->setLife(0.5f);
 	m_emitter->setGravity(ccp(0.0f,-200.0f));
 	m_emitter->setTotalParticles(50);
+
+	ccColor4F startColor = {1.0f, 0.1f, 0.1f, 1.0f};
+	m_emitter->setStartColor(startColor);
+
+	//ccColor4F startColorVar = {1.0f, 0.1f, 0.1f, 1.0f};
+	//m_emitter->setStartColorVar(startColorVar);
+
+	ccColor4F endColor = {0.1f, 0.1f, 0.1f, 0.2f};
+	m_emitter->setEndColor(endColor);
+
+	ccColor4F endColorVar = {0.1f, 0.1f, 0.1f, 0.2f};
+	m_emitter->setEndColorVar(endColorVar);
+
+	m_emitter->setTexture( CCTextureCache::sharedTextureCache()->addImage("playerfire.png"));
 	this->addChild(m_emitter, 1);
 
-	m_emitter->setTexture( CCTextureCache::sharedTextureCache()->addImage("fireball2.png"));
+
 
 	m_emitter->setAutoRemoveOnFinish(true);
 }
@@ -443,11 +590,11 @@ void SpaceScene::smoke(CCPoint location){
 	m_emitter->retain();
 	m_emitter->setPosition(location);
 
-	ccColor4F startColor = {0.5f, 0.5f, 0.5f, 1.0f};
+	ccColor4F startColor = {0.1f, 0.1f, 0.1f, 1.0f};
 	    m_emitter->setStartColor(startColor);
 
-	    ccColor4F startColorVar = {0.5f, 0.5f, 0.5f, 1.0f};
-	    m_emitter->setStartColorVar(startColorVar);
+	    //ccColor4F startColorVar = {0.5f, 0.f, 0.5f, 1.0f};
+	    //m_emitter->setStartColorVar(startColorVar);
 
 	    ccColor4F endColor = {0.1f, 0.1f, 0.1f, 0.2f};
 	    m_emitter->setEndColor(endColor);
@@ -478,8 +625,8 @@ void SpaceScene::HUD(){
 		_livesLabelDesc = CCLabelTTF::create("","Arial",20);
 		//_objectivesLabel = CCLabelTTF::labelWithString("","Cybertown Subterranean",20);
 
-		_timeLabel->setPosition(ccp(winSize.width-60,winSize.height - 20));
-		_timeLabelDesc->setPosition(ccp(winSize.width-120,winSize.height - 20));
+		_timeLabel->setPosition(ccp(winSize.width-toggleShootingButton->getContentSize().width*2,winSize.height - 20));
+		_timeLabelDesc->setPosition(ccp(winSize.width-toggleShootingButton->getContentSize().width*2-60,winSize.height - 20));
 		_scoreLabel->setPosition(ccp(120,winSize.height - 20));
 		_scoreLabelDesc->setPosition(ccp(60,winSize.height - 20));
 		_livesLabel->setPosition(ccp(120,winSize.height - 50));
@@ -501,6 +648,62 @@ void SpaceScene::HUD(){
 		this->addChild(_livesLabel);
 		this->addChild(_livesLabelDesc);
 		//this->addChild(_objectivesLabel);
+
+		do{
+		CCMenuItemImage *attackMenuItem1 = CCMenuItemImage::create("attack1Button.png","attack1ButtonSelected.png",this,menu_selector(SpaceScene::setAttack1));
+		//CCMenuItemImage *attackMenuItem1Selected = CCMenuItemImage::create("attack1ButtonSelected.png","attack1ButtonSelected.png",this,menu_selector(SpaceScene::setAttack1));
+		//CCMenuItemToggle *attack1Toggle = CCMenuItemToggle::createWithTarget(this,menu_selector(SpaceScene::setAttack1),attackMenuItem1,attackMenuItem1Selected);
+		CC_BREAK_IF(!attackMenuItem1);
+		attackMenuItem1->setPosition(0,0);
+		//attackMenuItem1Selected->setPosition(0,0);
+		//attack1Toggle->setPosition(0,0);
+
+		CCMenuItemImage *attackMenuItem2 = CCMenuItemImage::create("attack2Button.png","attack2ButtonSelected.png",this,menu_selector(SpaceScene::setAttack2));
+		//CCMenuItemImage *attackMenuItem2Selected = CCMenuItemImage::create("attack2ButtonSelected.png","attack2ButtonSelected.png",this,menu_selector(SpaceScene::setAttack2));
+		//CCMenuItemToggle *attack2Toggle = CCMenuItemToggle::createWithTarget(this,menu_selector(SpaceScene::setAttack2),attackMenuItem2,attackMenuItem2Selected);
+		CC_BREAK_IF(!attackMenuItem2);
+		attackMenuItem2->setPosition(attackMenuItem1->getPosition().x + (attackMenuItem2->getContentSize().width*2),0);
+		//attackMenuItem2Selected->setPosition(attackMenuItem1->getPosition().x + (attackMenuItem2->getContentSize().width*2),0);
+		//attack2Toggle->setPosition(attack1Toggle->getPosition().x + (attackMenuItem2->getContentSize().width*2),0);
+
+		CCMenuItemImage *attackMenuItem3 = CCMenuItemImage::create("attack3Button.png","attack3ButtonSelected.png",this,menu_selector(SpaceScene::setAttack3));
+		//CCMenuItemImage *attackMenuItem3Selected = CCMenuItemImage::create("attack3ButtonSelected.png","attack3ButtonSelected.png",this,menu_selector(SpaceScene::setAttack3));
+		//CCMenuItemToggle *attack3Toggle = CCMenuItemToggle::createWithTarget(this,menu_selector(SpaceScene::setAttack3),attackMenuItem3,attackMenuItem3Selected);
+		CC_BREAK_IF(!attackMenuItem3);
+		attackMenuItem3->setPosition(attackMenuItem2->getPosition().x + (attackMenuItem3->getContentSize().width*2),0);
+		//attackMenuItem3Selected->setPosition(attackMenuItem2->getPosition().x + (attackMenuItem3->getContentSize().width*2),0);
+		//attack3Toggle->setPosition(attack2Toggle->getPosition().x + (attackMenuItem3->getContentSize().width*2),0);
+
+
+
+		attackMenu = CCMenu::create(attackMenuItem1,attackMenuItem2,attackMenuItem3, NULL);
+		attackMenu->setPosition(ccp(winSize.width/2-(attackMenuItem1->getContentSize().width*2),0 + attackMenuItem1->getContentSize().height));
+		this->addChild(attackMenu);
+		/*
+		if(attack1B){
+							attackMenuItem1->setVisible(false);
+							attackMenuItem1Selected->setVisible(true);
+							attackMenuItem2->setVisible(true);
+							attackMenuItem2Selected->setVisible(false);
+							attackMenuItem3->setVisible(true);
+							attackMenuItem3Selected->setVisible(false);
+						} else if (attack2B){
+							attackMenuItem1->setVisible(true);
+							attackMenuItem1Selected->setVisible(false);
+							attackMenuItem2->setVisible(false);
+							attackMenuItem2Selected->setVisible(true);
+							attackMenuItem3->setVisible(true);
+							attackMenuItem3Selected->setVisible(false);
+						} else if (attack3B){
+							attackMenuItem1->setVisible(true);
+							attackMenuItem1Selected->setVisible(false);
+							attackMenuItem2->setVisible(true);
+							attackMenuItem2Selected->setVisible(false);
+							attackMenuItem3->setVisible(false);
+							attackMenuItem3Selected->setVisible(true);
+						}
+						*/
+		}while(0);
 }
 
 void SpaceScene::UpgradeMenu(){
@@ -583,32 +786,45 @@ void SpaceScene::UpgradeMenu(){
 
 		this->addChild(backMenu, 2);
 
+		char upgradechar[100];
+		sprintf(upgradechar,"Upgrades Remaining: %d",upgradeCounter);
+
+		upgradeLabel = CCLabelTTF::create(upgradechar,"CybertownSubterranean",30);
+		upgradeLabel->setPosition(ccp(winSize.width/2,UpgradeStat4->getPosition().y - UpgradeStat4->getContentSize().height));
+		ccColor3B colourTest = {0,200,0};
+		upgradeLabel->setColor(colourTest);
+		this->addChild(upgradeLabel,2);
+
 		char upgrade1char[100];
 		sprintf(upgrade1char,"%d",shipSprite->getCurLives());
 
-		upgrade1Label = CCLabelTTF::create(upgrade1char,"CybertownSubterranean",20);
+		upgrade1Label = CCLabelTTF::create(upgrade1char,"CybertownSubterranean",30);
 		upgrade1Label->setPosition(ccp(UpgradeStat1->getPosition().x + UpgradeStat1->getContentSize().width/2 + upgrade1Label->getContentSize().width/2 + 50,UpgradeStat1->getPosition().y));
+		upgrade1Label->setColor(colourTest);
 		this->addChild(upgrade1Label,2);
 
 		char upgrade2char[100];
-		sprintf(upgrade2char,"%d",shipSprite->getCurDamage());
+		sprintf(upgrade2char,"%.2f",shipSprite->getCurDamage());
 
-		upgrade2Label = CCLabelTTF::create(upgrade2char,"CybertownSubterranean",20);
+		upgrade2Label = CCLabelTTF::create(upgrade2char,"CybertownSubterranean",30);
 		upgrade2Label->setPosition(ccp(UpgradeStat2->getPosition().x + UpgradeStat2->getContentSize().width/2 + upgrade2Label->getContentSize().width/2 + 50,UpgradeStat2->getPosition().y));
+		upgrade2Label->setColor(colourTest);
 		this->addChild(upgrade2Label,2);
 
 		char upgrade3char[100];
 		sprintf(upgrade3char,"%.2f",shipSprite->getScoreMultiplier());
 
-		upgrade3Label = CCLabelTTF::create(upgrade3char,"CybertownSubterranean",20);
+		upgrade3Label = CCLabelTTF::create(upgrade3char,"CybertownSubterranean",30);
 		upgrade3Label->setPosition(ccp(UpgradeStat3->getPosition().x + UpgradeStat3->getContentSize().width/2 + upgrade3Label->getContentSize().width/2 + 50,UpgradeStat3->getPosition().y));
+		upgrade3Label->setColor(colourTest);
 		this->addChild(upgrade3Label,2);
 
 		char upgrade4char[100];
 		sprintf(upgrade4char,"%.2f",shipSprite->getAttackSpeed());
 
-		upgrade4Label = CCLabelTTF::create(upgrade4char,"CybertownSubterranean",20);
+		upgrade4Label = CCLabelTTF::create(upgrade4char,"CybertownSubterranean",30);
 		upgrade4Label->setPosition(ccp(UpgradeStat4->getPosition().x + UpgradeStat4->getContentSize().width/2 + upgrade4Label->getContentSize().width/2 + 50,UpgradeStat4->getPosition().y));
+		upgrade4Label->setColor(colourTest);
 		this->addChild(upgrade4Label,2);
 
 	}while(0);
@@ -616,6 +832,10 @@ void SpaceScene::UpgradeMenu(){
 
 void SpaceScene::menu_NextLevel(CCObject* pSender){
 	if(upgradeCounter == 0){
+		tempAttackDmg = 1;
+		attack1B = canShoot = true;
+		gameOver = upgradeTime = toggleShootingB = attack2B = attack3B = false;
+		setAccelerometerEnabled(true);
 		this->setTouchEnabled(true);
 		this->scene()->removeChildByTag(2,true);
 		time = level->getLevelTime();
@@ -625,6 +845,7 @@ void SpaceScene::menu_NextLevel(CCObject* pSender){
 		this->removeChild(dummyTitle3, true);
 		this->removeChild(dummyTitle4, true);
 		this->removeChild(backMenu, true);
+		this->removeChild(upgradeLabel,true);
 		this->removeChild(upgrade1Label,true);
 		this->removeChild(upgrade2Label,true);
 		this->removeChild(upgrade3Label,true);
@@ -632,6 +853,11 @@ void SpaceScene::menu_NextLevel(CCObject* pSender){
 		level->init(2);
 		level->setPosition(ccp(winSize.width/2,winSize.height/2));
 		shipSprite->init(2);
+		tempAttackDmg = shipSprite->getCurDamage();
+		this->schedule(schedule_selector(SpaceScene::update));
+		this->schedule(schedule_selector(SpaceScene::gameLogic),1.0);
+		this->schedule(schedule_selector(SpaceScene::updateLabels),1.0);
+
 	}
 }
 
@@ -643,6 +869,8 @@ void SpaceScene::menu_UpgradeStat1(CCObject* pSender){
 		upgrade1Label->setString(upgrade1char);
 		ups.setCurLives(shipSprite->getCurLives());
 		upgradeCounter --;
+		sprintf(upgrade1char, "Upgrades Remaining: %d",upgradeCounter);
+		upgradeLabel->setString(upgrade1char);
 		if(toggleSFX){
 			CocosDenshion::SimpleAudioEngine::sharedEngine()->playEffect(std::string(CCFileUtils::sharedFileUtils()->fullPathFromRelativePath("menu_01.ogg")).c_str());
 		}
@@ -650,12 +878,14 @@ void SpaceScene::menu_UpgradeStat1(CCObject* pSender){
 }
 void SpaceScene::menu_UpgradeStat2(CCObject* pSender){
 	if(upgradeCounter){
-		shipSprite->setCurDamage(shipSprite->getCurDamage() + 1);
+		shipSprite->setCurDamage(shipSprite->getCurDamage() + 1.0f);
 		char upgrade2char[100];
-		sprintf(upgrade2char,"%d",shipSprite->getCurDamage());
+		sprintf(upgrade2char,"%.2f",shipSprite->getCurDamage());
 		upgrade2Label->setString(upgrade2char);
 		ups.setCurDamage(shipSprite->getCurDamage());
 		upgradeCounter --;
+		sprintf(upgrade2char, "Upgrades Remaining: %d",upgradeCounter);
+		upgradeLabel->setString(upgrade2char);
 		if(toggleSFX){
 			CocosDenshion::SimpleAudioEngine::sharedEngine()->playEffect(std::string(CCFileUtils::sharedFileUtils()->fullPathFromRelativePath("menu_01.ogg")).c_str());
 		}
@@ -663,12 +893,14 @@ void SpaceScene::menu_UpgradeStat2(CCObject* pSender){
 }
 void SpaceScene::menu_UpgradeStat3(CCObject* pSender){
 	if(upgradeCounter){
-		shipSprite->setScoreMultiplier(shipSprite->getScoreMultiplier() + 0.10);
+		shipSprite->setScoreMultiplier(shipSprite->getScoreMultiplier() + 0.02);
 		char upgrade3char[100];
 		sprintf(upgrade3char,"%.2f",shipSprite->getScoreMultiplier());
 		upgrade3Label->setString(upgrade3char);
 		ups.setScoreMultiplier(shipSprite->getScoreMultiplier());
 		upgradeCounter --;
+		sprintf(upgrade3char, "Upgrades Remaining: %d",upgradeCounter);
+		upgradeLabel->setString(upgrade3char);
 		if(toggleSFX){
 			CocosDenshion::SimpleAudioEngine::sharedEngine()->playEffect(std::string(CCFileUtils::sharedFileUtils()->fullPathFromRelativePath("menu_01.ogg")).c_str());
 		}
@@ -676,12 +908,14 @@ void SpaceScene::menu_UpgradeStat3(CCObject* pSender){
 }
 void SpaceScene::menu_UpgradeStat4(CCObject* pSender){
 	if(upgradeCounter){
-		shipSprite->setAttackSpeed(shipSprite->getAttackSpeed() + 0.10);
+		shipSprite->setAttackSpeed(shipSprite->getAttackSpeed() + 0.02);
 		char upgrade4char[100];
 		sprintf(upgrade4char,"%.2f",shipSprite->getAttackSpeed());
 		upgrade4Label->setString(upgrade4char);
 		ups.setAttackSpeed(shipSprite->getAttackSpeed());
 		upgradeCounter --;
+		sprintf(upgrade4char, "Upgrades Remaining: %d",upgradeCounter);
+		upgradeLabel->setString(upgrade4char);
 		if(toggleSFX){
 			CocosDenshion::SimpleAudioEngine::sharedEngine()->playEffect(std::string(CCFileUtils::sharedFileUtils()->fullPathFromRelativePath("menu_01.ogg")).c_str());
 		}
@@ -701,8 +935,10 @@ void SpaceScene::menu_Back(CCObject* pSender)
 void SpaceScene::GameOverMenu(){
 	do{
 		gameOver = true;
-		CCSprite *bg_menu = CCSprite::spriteWithFile("gameover.png", CCRectMake(0,0,winSize.width,winSize.height));
+		CCSprite *bg_menu = CCSprite::create("gameover.png");
 		bg_menu->setPosition(ccp(winSize.width/2 , winSize.height/2));
+		bg_menu->setScaleX(winSize.width/bg_menu->getContentSize().width);
+		bg_menu->setScaleY(winSize.height/bg_menu->getContentSize().height);
 		this->addChild(bg_menu,1);
 
 		CCMenuItemImage *backToMain = CCMenuItemImage::create(

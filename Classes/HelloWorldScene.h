@@ -21,7 +21,10 @@ public:
     
 	//Taco Scene
 	//cocos2d::CCScene *tacoScene = Taco::scene();
-	
+
+    cocos2d::CCSize winSize;
+    cocos2d::CCMenu* selectMenu;
+    cocos2d::CCMenuItemImage *menu_Start;
 
     // a selector callback
     void menuStartCall(CCObject* pSender);
